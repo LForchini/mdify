@@ -10,6 +10,10 @@ use pathdiff::diff_paths;
 
 #[derive(Debug, Parser)]
 struct Args {
+    #[arg(short, long)]
+    /// Optional stylesheet to bake into the HTML
+    stylesheet: Option<PathBuf>,
+
     #[arg(short, long, default_value = "build")]
     /// Directory to place HTML files into
     out_dir: PathBuf,
@@ -25,6 +29,11 @@ fn main() {
     if args.out_dir.canonicalize().is_err() {
         create_dir_all(&args.out_dir).expect("should be able to create missing build folder");
     }
+
+    let styling = args
+        .stylesheet
+        .and_then(|p| read_to_string(p).ok())
+        .map(|s| format!("<style>{}</style>", s));
 
     let src_dir = args.src_dir.canonicalize().unwrap();
     let mut glob = src_dir.clone();
@@ -48,7 +57,13 @@ fn main() {
 
             create_dir_all(out_path.parent()?).ok()?;
             let mut out_file = File::create(out_path).ok()?;
-            out_file.write_all(html.as_bytes()).ok()
+            out_file.write_all(html.as_bytes()).ok()?;
+
+            if let Some(styling) = &styling {
+                out_file.write_all(styling.as_bytes()).ok()?;
+            }
+
+            Some(())
         })
         .collect::<Vec<_>>();
 }
