@@ -5,8 +5,12 @@ use std::{
 };
 
 use clap::Parser;
-use comrak::{markdown_to_html, ComrakOptions};
+use comrak::{
+    markdown_to_html, ComrakExtensionOptions, ComrakOptions, ComrakParseOptions,
+    ComrakRenderOptions,
+};
 use pathdiff::diff_paths;
+use regex::{Captures, Regex};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -30,6 +34,29 @@ fn main() {
         create_dir_all(&args.out_dir).expect("should be able to create missing build folder");
     }
 
+    let options = ComrakOptions {
+        extension: ComrakExtensionOptions {
+            strikethrough: true,
+            table: true,
+            autolink: true,
+            tasklist: true,
+            superscript: true,
+            header_ids: Some("header-".to_string()),
+            footnotes: true,
+            ..Default::default()
+        },
+        parse: ComrakParseOptions {
+            smart: true,
+            relaxed_tasklist_matching: true,
+            ..Default::default()
+        },
+        render: ComrakRenderOptions {
+            ..Default::default()
+        },
+    };
+
+    let re = Regex::new(r"\[(?<text>.*)\]\((?<link>.*)\.md\)").unwrap();
+
     let styling = args
         .stylesheet
         .and_then(|p| read_to_string(p).ok())
@@ -51,9 +78,10 @@ fn main() {
             out_path.set_extension("html");
 
             let content = read_to_string(&p).ok()?;
-            let html = markdown_to_html(&content, &ComrakOptions::default());
-
-            println!("{:?}, {:?}", out_path, html);
+            let content = re.replace_all(&content, |caps: &Captures<'_>| {
+                format!("[{}]({}.html)", &caps["text"], &caps["link"])
+            });
+            let html = markdown_to_html(&content, &options);
 
             create_dir_all(out_path.parent()?).ok()?;
             let mut out_file = File::create(out_path).ok()?;
