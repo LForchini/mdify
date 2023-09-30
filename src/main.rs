@@ -62,6 +62,8 @@ fn main() {
         .and_then(|p| read_to_string(p).ok())
         .map(|s| format!("<style>{}</style>", s));
 
+    let html_autoinclude = include_str!("autoinclude.html");
+
     let src_dir = args.src_dir.canonicalize().unwrap();
     let mut glob = src_dir.clone();
     glob.push("**");
@@ -90,6 +92,8 @@ fn main() {
             if let Some(styling) = &styling {
                 out_file.write_all(styling.as_bytes()).ok()?;
             }
+
+            out_file.write_all(html_autoinclude.as_bytes()).ok()?;
 
             Some(())
         })
