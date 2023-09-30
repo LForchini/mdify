@@ -39,6 +39,7 @@ fn main() {
             let relative_path = diff_paths(&p, &src_dir)?;
             let mut out_path = args.out_dir.canonicalize().unwrap();
             out_path.extend(&relative_path);
+            out_path.set_extension("html");
 
             let content = read_to_string(&p).ok()?;
             let html = markdown_to_html(&content, &ComrakOptions::default());
